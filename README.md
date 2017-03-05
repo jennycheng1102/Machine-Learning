@@ -1,5 +1,6 @@
 # local-learning-python
-Based on thesis 《Local minimax Learning of Functions With Best Finite Sample Estimation》
+colleges are demanded to do better in student's graduation,so many schools are asking big data how to do that.
+The research is conducted basing on thesis 《Local minimax Learning of Functions With Best Finite Sample Estimation》
 thesis URL http://ieeexplore.ieee.org/document/5319754/
 apply four algorithms in the thesis to the colledge graduation data
 1. weighted least squares
