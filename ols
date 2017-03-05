@@ -1,0 +1,301 @@
+import numpy as np
+#cvxopt is a package designed for convex optimization
+#use cvxopt to create matrix,solve quadratic programming
+from cvxopt import matrix, solvers
+import random
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from math import sqrt,erf
+import pandas as pd
+import itertools 
+import csv
+import pandas as pd
+import scipy.stats
+#convert categorical graduation rate 'Y' and 'N' to numerical #
+def YN_to_num(x):
+    if (x == 'Y'):
+        return 1
+    if (x == 'N'):
+        return 0
+#assign numerical values to race according to extent of skin colors       
+def Race_to_num(x):
+    if (x == 'White'):
+        return 1
+    if (x == 'Asian'):
+        return 3
+    if (x == 'Hispanic/Latino'):
+        return 2
+    if (x == 'Black/African American'):
+        return 4
+    if (x == 'Not Specified'):
+        return 2.5
+    if (x == 'Non Resident Alien'):
+        return 2.5
+    if ( x == 'Two or more races'):
+        return 2.5
+    if ( x == 'Cape Verdean'):
+        return 2 
+
+
+def Housing_to_num(x):
+    if (x == 'Dorm'):
+        return 2
+    if (x == 'Commuter'):
+        return 1 
+        
+def FA_to_num(x):
+    if ( x == 'Y'):
+        return 1
+    if ( x == 'N'):
+        return 2
+        
+def Work_to_num(x):
+    if (x == 'Y'):
+        return 1
+    if (x == 'N'):
+        return 2 
+#Because living on-campus or off-campus is partly related with study full-time or part-time         
+def WorkHousing_to_num(x):
+
+    if (x[20] == 'N') & (x[12] == 'Commuter'):
+        return 1
+    if (x[20] == 'N') & (x[12] == 'Dorm'):
+        return 2   
+    if (x[20] == 'Y') & (x[12] == 'Commuter'):
+        return 3          
+    if (x[20] == 'Y') & (x[12] == 'Dorm'):
+        return 4   
+     
+edudf = pd.read_csv('/Users/Jennycheng/college_graduation_data.csv')
+
+fout1 = open('/Users/kavithachandra/desktop/edupycode/lin_lse_0.95_0.33n.out', 'w')
+fout0 = open('/Users/kavithachandra/desktop/edupycode/pvlin0_0.95_0.33n.out', 'w')
+#check feature numbers
+print(edudf.columns)
+print edudf.dtypes
+#print edudf.describe()
+
+
+numcols = [ column for column in edudf.columns if edudf[column].dtype == 'float64' ] 
+#extract engineering college records
+busdf = edudf.loc[edudf['COLLEGE'] == 'Engineering']
+#put row number into 'ro',column number into columns
+[ro,co] = busdf.shape
+
+#Graduated Students 
+#busdfGY = busdf.loc[busdf['DEGREE COMPLETION-6YR'] == 'Y']
+
+
+
+# operate with features : ETHNICITY, HS GPA, SAT-MATH, SAT-VERB, HOUSING, FA APPLICANT, WORK, FALL GPA, SPRING GPA
+NF = 10
+XF = np.zeros((k,NF))
+apply Race_to_num to feature 'ethnicity'
+XF[:,0] = busdf['ETHNICITY'].apply(Race_to_num)
+XF[:,1] = busdf['HS GPA']
+XF[:,2] = busdf['SAT-MATH']
+XF[:,3] = busdf['SAT-VERB']
+XF[:,4] = busdf.apply(WorkHousing_to_num,axis=1) 
+XF[:,5] = busdf['SPRING GPA'] 
+XF[:,9] = busdf['WORK'].apply(Work_to_num)
+XF[:,6] = busdf['HOUSING'].apply(Housing_to_num)
+XF[:,7] = busdf['FA APPLICANT'].apply(FA_to_num) 
+XF[:,8] = busdf['FALL GPA']
+
+
+features = ['ETHN', 'HSGPA', 'SMATH', 'SVERB', 'WH', 'SP']
+
+
+#Outcome: Graduation : Y/N  :  convert to 1 and 0 
+Y = np.zeros((k,1))  
+Ys = np.zeros((k,1))
+Ys[:,0] = busdf['DEGREE COMPLETION-6YR'].apply(YN_to_num)
+#choose variance=p(1-p)=0.25 because of binomial distribution
+var = 0.25
+mu,sigma = 0, np.sqrt(var)
+print 'sigma = ', sigma
+Y[:,0] = Ys[:,0] 
+Ymin = min(Ys)
+Ymax = max(Ys)
+My = abs(Ymax-Ymin)
+print 'bound=',My
+
+# pick random query point  and transform all data so that query is at origin
+kq = 13
+kq = 16
+kq=35
+kq=9
+
+flist =  list(itertools.combinations(range(6),3))
+flistlen = len(flist)
+# define feature vector 
+N = 3
+X = np.zeros((k,N))
+Xs = np.zeros((k,N))
+
+for kq in range(0,k):
+    print 'query:',kq
+    err = np.zeros((flistlen,1))
+    fest = np.zeros((flistlen,1))
+    obj = np.zeros((flistlen,1))
+    ftrue = np.zeros((flistlen,1))
+    nsamp = np.zeros((flistlen,1))
+    fmod = np.array(range(flistlen*N),dtype=str).reshape(flistlen,N)
+    fqval = np.zeros((flistlen,N))
+    LSEest = np.zeros((flistlen,1))
+    LSEerr = np.zeros((flistlen,1))
+
+    imodindx = -1
+
+    for imod in flist:
+        indx = -1
+        fnames = []
+        querval=[]
+        imodindx = imodindx + 1
+        for j in imod:
+            fnames.append(features[j])
+            querval.append(XF[kq,j]) #kq query
+            indx = indx + 1
+    #       print j, indx
+    #only focus on the first 6 fetures
+            Xs[:,indx] = XF[:,j]
+    
+        X = Xs         
+        meanX = np.zeros((1,N))
+        stdX = np.zeros((1,N))
+    # Find Range of Variables 
+    
+        Xmin = np.zeros((1,N))
+        Xmax = np.zeros((1,N))
+
+        for j in range(N):
+            meanX[0,j] = np.mean( X[:,j] )
+            stdX[0,j] = np.std(X[:,j] ) 
+    
+    # center the features 
+        
+        for j in range(N):
+            X[:,j] = (X[:,j] - meanX[0,j])/stdX[0,j]
+            
+        xq = np.zeros((1,N)) 
+        xq = X[kq,:] 
+        xn = np.zeros((k,N)) 
+    # Center about the query point ,substract query point from every record
+        xn[:,0:N-1] = X[:,0:N-1] - xq[0:N-1]
+        
+    #get the bound of every feature[0,j]
+        for j in range(N):
+            Xmin[0,j] = min(xn[:,j])
+            Xmax[0,j] = max(xn[:,j]) 
+    
+        r = np.zeros((1,N))
+    
+        for j in range(N):
+            r[0,j] = Xmax[0,j]-Xmin[0,j]
+    rint=0.33
+    #specify enclosure boundary
+        lb = np.zeros((1,N))
+        rb = np.zeros((1,N))
+        ri = np.zeros((1,N))
+        for j in range(N):
+            lb[0,j] = Xmin[0,j]*rint
+            rb[0,j] = Xmax[0,j]*rint
+            ri[0,j] = rb[0,j]-lb[0,j]
+        
+#        print 'Left bound:', lb
+#        print 'Right Bound:', rb
+#        print 'Interval:', ri
+
+        yn = np.zeros((k,1))
+    #yn[:] = Y[:] - Y[kq[0]]
+        yn[:] = Y[:]
+        
+       
+#        print kq, xn[0,0:N]
+# verify distribution of data to see if there is a mode 
+
+        l=0
+        xloc = np.zeros((k,N))
+        
+        #create xlocn,ycoln to store selected records and graduation rate
+        xlocn = np.zeros((k,N))
+        ylocn = np.zeros((k))
+        xv = np.zeros((N))
+        kn = 0
+        exclude = {kq}
+        #for xv in xn:
+        irange = range(len(xn))
+        irange.pop(kq)
+        
+        #select all the records in ri[0,j]
+        for indx in irange:
+            xv = xn[indx,:] 
+            if ((lb[0,0] < xv[0] < rb[0,0] ) & (lb[0,1] < xv[1] < rb[0,1]) & (lb[0,2] < xv[2] < rb[0,2])):
+                xlocn[kn,:] = xv
+                ylocn[kn] = yn[indx,0] 
+                kn = kn + 1
+        
+        kn=kn-1        
+#        print 'Module , Samples kn:',imodindx, kn
+        nsamp[imodindx] = kn
+#        print 'samples:',kn
+        if kn > 0 : 
+
+            # LSE  Solution            
+            a = np.zeros((kn,N))
+            b = np.zeros((kn,1))
+            a = xlocn[0:kn,0:N]
+            b = ylocn[0:kn]
+            
+# least squares solution :if all columns are non zero
+            lssoln = 0
+            lsesum = 0
+            LSEest[imodindx] = 9
+            LSEerr[imodindx] = 9.99
+            c1lse = 0.00
+            c2lse = 0.00
+#            if (not (~a.any(axis=0)).any()):
+            lssoln = 1
+            ai = np.insert(a, 0, values=1, axis=1)
+            sig = np.zeros((kn,kn))
+            np.fill_diagonal(sig,sigma)
+            eps = np.zeros((N+1,N+1))
+            np.fill_diagonal(eps,0.001)
+            eps[0,0] = 0.0
+                
+            siginv = np.linalg.inv(sig) 
+            xt = ai.transpose()
+            x1= xt.dot(siginv)
+            x2 = x1.dot(ai) 
+            x2 = x2 + eps
+            x3 = np.linalg.inv(x2)
+            x4 = x3.dot(xt)
+            s= x4.dot(siginv)
+ #extract first row of s as LSE coefficients 
+            lsecoef = s[0,:]  
+ 
+                # check sum
+            lsesum = sum(lsecoef) 
+ #           print 'sum:',lsesum  
+#            print 'coef:', lsecoef             
+ # find MSE 
+            LT  = (lsecoef.transpose() ) .dot(sig)
+            T1 = LT.dot(lsecoef) 
+                
+  #          print 'T1:',T1
+            T2 = (lsecoef.transpose() ) .dot(a) 
+                
+                
+            for ii in range(0,N):
+                if ( np.abs(ri[0,ii]) > 0.0):
+                    T2[ii] =  T2[ii] * 1.0/ri[0,ii]
+                else:
+                    T2[ii] = 0.0   
+                    
+#            print 'T2:',T2
+            LSE = T1 + np.max(np.abs(T2)) 
+            LSE = np.sqrt(LSE) 
+#            print 'LSE:', LSE
+            
+            LSEerr[imodindx] = LSE
+            LSEest[imodindx] = lsecoef.dot(b)
