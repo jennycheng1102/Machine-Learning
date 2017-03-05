@@ -1,0 +1,34 @@
+> grad<-read.csv('/Users/Jennycheng/Downloads/gradata.csv',head=T)
+#check categorical features
+grad_ahltschol<-table(grad$AHLTSCHOL,grad$DEGREE)
+    degr  N   Y
+AHLT  N  547 602
+      Y  15  40
+#when AHLT is Y, it is more related with graduate completion(positive correlation)
+table(grad$WORK,grad$DEGREE)
+ N   Y
+  N 465 518
+  Y  97 124
+#if WORK is 'Y',the graduation precentage is 52.7%,if WORK is 'N' the rate is 56.1%,so the single feature of WORK seem 
+#not impact the graduation because bith rate is little above 50%
+#however,check the correlation between Work and Housing
+table(grad$WORK,grad$HOUSING,grad$DEGREE)
+, ,  = N
+
+   
+    Commuter Dorm
+  N      229  236
+  Y       11   86
+
+, ,  = Y
+
+   
+    Commuter Dorm
+  N      183  335
+  Y       14  110
+
+#when COMMUTER=Y & WORK=N,graduation rate is 183/(229+183)=44.4%
+#when COMMUTER=Y & WORK=Y,graduation rate is 14/25=56%
+#when Dorm=Y & WORK=N,graduation rate is 335/571=58.6%
+#when DORM=Y & WORK=Y,graduation rate is 110/196=56.1%
+#students using commuter and live off campus have a low rate of graduation rate
