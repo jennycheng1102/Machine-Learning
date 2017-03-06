@@ -32,3 +32,33 @@ table(grad$WORK,grad$HOUSING,grad$DEGREE)
 #when Dorm=Y & WORK=N,graduation rate is 335/571=58.6%
 #when DORM=Y & WORK=Y,graduation rate is 110/196=56.1%
 #students using commuter and live off campus have a low rate of graduation rate
+
+#check the correlation between ethnicity and degree
+grad_ethnicity<-glm('DEGREE~ETHNICITY',data=grad,family=binomial(link='logit'))
+> summary(grad_ethnicity)
+
+Call:
+glm(formula = "DEGREE~ETHNICITY", family = binomial(link = "logit"), 
+    data = grad)
+
+Deviance Residuals: 
+   Min      1Q  Median      3Q     Max  
+-1.893  -1.262   1.095   1.095   1.482  
+
+Coefficients:
+                                Estimate Std. Error z value Pr(>|z|)
+(Intercept)                        13.57     378.59   0.036    0.971
+ETHNICITYAsian                    -13.76     378.59  -0.036    0.971
+ETHNICITYBlack/African American   -13.66     378.59  -0.036    0.971
+ETHNICITYCape Verdean             -14.26     378.59  -0.038    0.970
+ETHNICITYHispanic/Latino          -13.65     378.59  -0.036    0.971
+ETHNICITYNon Resident Alien       -13.38     378.59  -0.035    0.972
+ETHNICITYNot Specified            -13.87     378.59  -0.037    0.971
+ETHNICITYTwo or more races        -11.96     378.59  -0.032    0.975
+ETHNICITYWhite                    -13.37     378.59  -0.035    0.972
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1663.8  on 1203  degrees of freedom
+Residual deviance: 1649.3  on 1195  degrees of freedom
+AIC: 1667.3
