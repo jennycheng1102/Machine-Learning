@@ -239,63 +239,175 @@ for kq in range(0,k):
 #        print 'Module , Samples kn:',imodindx, kn
         nsamp[imodindx] = kn
 #        print 'samples:',kn
-        if kn > 0 : 
-
-            # LSE  Solution            
-            a = np.zeros((kn,N))
-            b = np.zeros((kn,1))
-            a = xlocn[0:kn,0:N]
-            b = ylocn[0:kn]
+        
+          ##QP  Theorem 4 
+    ## | f(x) - f(z) | <=  2M 
+         P = matrix(0.0, (kn+1,kn+1))
+            for i in range(kn):
+                P[i,i] = sigma
+    #        
+            M = 0.5
+            P[kn,kn] = 4*M*M 
+    #    
+    ##q = np.zeros((kn+1))
+    #        q =  [[0 for ic in xrange (1)] for ir in xrange(kn+1)]
+            q = matrix(0.0,(kn+1,1))
+    #    
+    ##G = np.zeros((2*N,kn+1))
+    ##G = [[0 for ic in xrange(kn+1)] for ir in xrange(2*N)]
+    #    
+            G = matrix(0.0,(2*N, kn+1) ) 
+    #    
+            for i in range(N):
+                for j in range(kn):
+                    G[i,j]= xlocn[j,i]/ri[0,i]
+    #        
+            for i in range(N):
+                for j in range(kn):
+                    G[N+i,j] = -1.0*xlocn[j,i]/ri[0,i]
+    #            
+            for i in range(2*N):        
+                G[i,kn] = -1.0
+    #    
+    ##h = np.zeros(kn+1)
+    ##h = [[0 for ic in xrange(1)] for ir in xrange(kn+1)]
+            h = matrix(0.0,(2*N,1))
+    #    
+    ## Constraints  GW < h   and Ax = b
+    ##A = np.zeros((1,kn+1))
+    ##A = [[ 0 for ic in xrange(kn+1)] for ir in xrange(1)]
+    #    
+            A = matrix(0.0,(1,kn+1)) 
+    #    
+    ##b = np.zeros((1))
+    #    
+    ##b = [[0 for ic in xrange(1)] for ir in xrange(1)] 
+            b= matrix(0.0,(1,1))
+    #    
+            for i in range(kn):
+                A[0,i]= 1.0
+    #    
+    ##A[0][kn+1] = 0.0
+            b[0,0] = 1.0
+    #    
+            sol = solvers.qp(P,q,G,h,A,b, ) 
+    #    
+    ##print (sol['x'])
+            #print 'obj :' 
+            #print (sol['primal objective'])
+            obj[imodindx] = np.sqrt(sol['primal objective'])
+    #        
+    ## test solution 
+            xo = sol['x']
+    #    
+            fval = 0.0
+            for i in range(kn):
+                fval = fval + xo[i]*ylocn[i]
+    ##        print 'fval=',fval    
+    ##        print xo
+    #
+            fest[imodindx] = fval    
+            ftrue[imodindx] = Ys[kq] 
+            err[imodindx] = (fval- Ys[kq])
+            fmod[imodindx,:] = fnames[:] 
+            fqval[imodindx,:] = querval[:]
+    #        
+    #print imodindx     
+    #  
+    fout0.write('%d \n' %(kq))
+    fout1.write('%d \n' %(kq))
+    
+ #   fout1.write('%d \n' %(kq))
+   # fout1.write('%d \n' %(kq))
+    
+    nout  =0
+    icount = 0
+    for imod in range(imodindx+1): 
+        i = imod
+        ftrue[i]  = Ys[kq]
+        # LSE 
+        if (nsamp[i] > 0):
+        
+            c1lse = LSEest[i]-LSEerr[i] 
+            c2lse = LSEest[i] + LSEerr[i] 
             
-# least squares solution :if all columns are non zero
-            lssoln = 0
-            lsesum = 0
-            LSEest[imodindx] = 9
-            LSEerr[imodindx] = 9.99
-            c1lse = 0.00
-            c2lse = 0.00
-#            if (not (~a.any(axis=0)).any()):
-            lssoln = 1
-            ai = np.insert(a, 0, values=1, axis=1)
-            sig = np.zeros((kn,kn))
-            np.fill_diagonal(sig,sigma)
-            eps = np.zeros((N+1,N+1))
-            np.fill_diagonal(eps,0.001)
-            eps[0,0] = 0.0
-                
-            siginv = np.linalg.inv(sig) 
-            xt = ai.transpose()
-            x1= xt.dot(siginv)
-            x2 = x1.dot(ai) 
-            x2 = x2 + eps
-            x3 = np.linalg.inv(x2)
-            x4 = x3.dot(xt)
-            s= x4.dot(siginv)
- #extract first row of s as LSE coefficients 
-            lsecoef = s[0,:]  
- 
-                # check sum
-            lsesum = sum(lsecoef) 
- #           print 'sum:',lsesum  
-#            print 'coef:', lsecoef             
- # find MSE 
-            LT  = (lsecoef.transpose() ) .dot(sig)
-            T1 = LT.dot(lsecoef) 
-                
-  #          print 'T1:',T1
-            T2 = (lsecoef.transpose() ) .dot(a) 
-                
-                
-            for ii in range(0,N):
-                if ( np.abs(ri[0,ii]) > 0.0):
-                    T2[ii] =  T2[ii] * 1.0/ri[0,ii]
-                else:
-                    T2[ii] = 0.0   
+            c1lse0 = LSEest[i]-1.645*LSEerr[i] 
+            c2lse0 = LSEest[i] + 1.645*LSEerr[i] 
+            
+            sigma2 = LSEerr[i]**2
+            
+            if (c1lse > 0.5):
+                #  estimate - sigma - 0.5 
+#                zc1 = (c1lse-0.5)/LSEerr[i]  
+                zc1 = np.sqrt((LSEest[i] - 0.5)**2 - sigma2)/LSEerr[i]
+                pc1 = scipy.stats.norm.sf(zc1) 
+                fout1.write('%d  %d  %1.0f   %0.2f   %0.2f  %0.2f %s %0.3f \n' %(i,nsamp[i],
+                        ftrue[i],LSEest[i],LSEerr[i],c1lse,'>',pc1))     
+            
+            if (c2lse < 0.5):
+                # 0.5 - estimate - sigma 
+               # zc2 = (0.5-c2lse)/LSEerr[i] 
+                zc2 = np.sqrt(( 0.5- LSEest[i])**2 - sigma2)/LSEerr[i] 
+                pc2 = scipy.stats.norm.sf(zc2)
+                fout1.write('%d  %d   %1.0f   %0.2f   %0.2f   %0.2f %s %0.3f \n' %(i,nsamp[i],
+                    ftrue[i],LSEest[i],LSEerr[i],c2lse,'<',pc2))  
                     
-#            print 'T2:',T2
-            LSE = T1 + np.max(np.abs(T2)) 
-            LSE = np.sqrt(LSE) 
-#            print 'LSE:', LSE
+                      
+            if (LSEest[i] >= 0.5  and c1lse0 <= 0.5):
+                pval = 9.99
+            if (LSEest[i] < 0.5 and c2lse0 >= 0.5):
+                pval = 0.00  
             
-            LSEerr[imodindx] = LSE
-            LSEest[imodindx] = lsecoef.dot(b)
+            if ( (c1lse <= 0.5) and ( c2lse >= 0.5) ):  
+                fout1.write('%d  %d   %1.0f   %0.2f   %0.2f   %0.2f %s %0.3f \n' %(i,nsamp[i],ftrue[i],
+                    LSEest[i],LSEerr[i],0.0,'=',9.99))
+        
+       
+            c1 = fest[i]-obj[i] 
+            c2 = fest[i] + obj[i] 
+            
+            # 95 % confidence interval
+            c10 = fest[i] - 1.645* obj[i]
+            c20 = fest[i] + 1.645*obj[i] 
+            
+            s2 = obj[i]*obj[i] 
+            
+            if (c1 >= 0.5):
+#                zc1 = (c1-0.5)/obj[i]  
+                zc1 = np.sqrt((fest[i]-0.5)**2 - s2)/obj[i] 
+                pc1 = scipy.stats.norm.sf(zc1) 
+                fout0.write('%d  %d  %1.0f   %0.2f   %0.2f  %0.2f %s %0.3f \n' %(i,nsamp[i],
+            ftrue[i],fest[i],obj[i],c1,'>',pc1))
+            
+            #print('%d  %d   %1.0f   %0.2f   %0.2f   %0.2f \n' %(i,nsamp[i],ftrue[i],
+            #fest[i],obj[i],c1))
+            
+            if (c2 <= 0.5):
+             #   zc2 = (0.5-c2)/obj[i] 
+                zc2 = np.sqrt((0.5-fest[i])**2 - s2)/obj[i] 
+                pc2 = scipy.stats.norm.sf(zc2)
+                fout0.write('%d  %d   %1.0f   %0.2f   %0.2f   %0.2f %s %0.3f \n' %(i,nsamp[i],
+                ftrue[i],fest[i],obj[i],c2,'<',pc2))
+            #print('%d  %d   %1.0f   %0.2f   %0.2f   %0.2f \n' %(i,nsamp[i],
+            #ftrue[i],fest[i],obj[i],c2))
+            
+            if (fest[i] >= 0.5  and c10 <= 0.5):
+                pval = 9.99
+            if (fest[i] < 0.5 and c20 >= 0.5):
+                pval = 0.00
+            
+            if ( (c1 < 0.5) and ( c2 > 0.5) ):  
+                fout0.write('%d  %d   %1.0f   %0.2f   %0.2f   %0.2f %s %0.3f \n' %(i,nsamp[i],ftrue[i],
+                fest[i],obj[i],0.0,'=',9.99))
+                
+                
+                
+        else:
+                fout1.write('%d  %d   %1.0f   %0.2f   %0.2f   %0.2f %s %0.3f \n' %(i,nsamp[i],ftrue[i],
+                    LSEest[i],LSEerr[i],0.0,'=',8.88))
+                fout0.write('%d  %d   %1.0f   %0.2f   %0.2f   %0.2f %s %0.3f \n' %(i,nsamp[i],ftrue[i],
+                fest[i],obj[i],0.0,'=',8.88))    
+ 
+
+fout0.close
+fout1.close
