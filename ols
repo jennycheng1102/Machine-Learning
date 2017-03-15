@@ -68,8 +68,8 @@ def WorkHousing_to_num(x):
      
 edudf = pd.read_csv('/Users/Jennycheng/college_graduation_data.csv')
 
-fout1 = open('/Users/kavithachandra/desktop/edupycode/lin_lse_0.95_0.33n.out', 'w')
-fout0 = open('/Users/kavithachandra/desktop/edupycode/pvlin0_0.95_0.33n.out', 'w')
+fout1 = open('/Users/Jennycheng/Desktop/lin0.33_ols', 'w')
+fout0 = open('/Users/Jennycheng/Desktop/nlin0.33_qp', 'w')
 #check feature numbers
 print(edudf.columns)
 print edudf.dtypes
