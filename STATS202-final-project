@@ -1,0 +1,107 @@
+df=read.csv('/Users/chengjie/Downloads/training.csv')
+df_test=read.csv('/Users/chengjie/Downloads/test.csv')
+
+#show summary of data
+summary(df)
+nrow(df)
+names(df)
+head(df)
+# Check redundancy
+length(unique(df$url_id))
+length(unique(df$query_id))
+length(unique(df$url_id))/nrow(train)
+length(unique(df$query_id))/nrow(train)
+# probabibility that homepage and relevancy is just to chance
+table(df$relevance, df$is_homepage)
+pbinom(10471,size=(11057+10471),p=.4370862)
+pbinom(24516,size=(24516+34002),p=.4370862)
+df_filter=df[-c(1,2)]
+# Apply Logistic Regression
+folds=cvFolds(80046,K=10)
+glm.fit=glm(relevance~.,data=df_filter,family='binomial')
+cost=function(r,pi=0) mean(abs(r-pi)>0.5)
+cv.error=cv.glm(df_filter,glm.fit,cost,K=10)$delta[1]
+#eliminate query_id and url_id because they not numeric and ordinal features 
+tune.out=tune(svm,y~.,data=df_filter,kernel='linear',ranges=list(cost=10^seq(-2,1,by=0.5)))
+summary(tune.out)
+# Apply Adaboosting
+for (i in 1:11){
+  df_filter[,i]=as.numeric(df_filter[,i])
+}
+df_filter[,1:10]=scale(df_filter[,1:10])
+df_filter$relevance=ifelse(df_filter$relevance==0,-1,1)
+train=sample(1:nrow(df_filter),nrow(df_filter)/2)
+y=df_filter[train,11]
+x=df_filter[train,1:10]
+y_valid=df_filter[-train,11]
+x_valid=df_filter[-train,1:10]
+train_error=rep(0,500)
+test_error=rep(0,500)
+#keep f for each of 130 observations
+f=rep(0,40023)
+f_valid=rep(0,40023)
+
+#cv adaboosting
+library(rpart)
+library(cvTools)
+df_filter[,1:10]=scale(df_filter[,1:10])
+df_filter$relevance=ifelse(df_filter$relevance==0,-1,1)
+i=1
+set.seed(1)
+k=10
+folds=cvFolds(80046,K=10)
+avg_error=rep(0,10)
+for (j in 1:10){
+  train=df_filter[folds$subset[folds$which!=j],]
+  valid=df_filter[folds$subset[folds$which==j],]
+  y=train[,11]
+  x=train[,1:10]
+  y_valid=valid[,11]
+  x_valid=valid[,1:10]
+  f=rep(0,nrow(train))
+  f_valid=rep(0,nrow(valid))
+  test_error=rep(0,500)
+  while(i<=500){
+    #update weights
+    w=exp(-y*f)
+    #normalize
+    w=w/sum(w)
+    fit=rpart(y~.,x,w,method='class')
+    g=-1+2*(predict(fit,x)[,2]>.5)
+    g_valid=-1+2*(predict(fit,x_valid)[,2]>.5)
+    #calculating overall misclassification error
+    e=sum(w*(y*g<0))
+    alpha=.5*log((1-e)/e)
+    f=f+alpha*g
+    f_valid=f_valid+alpha*g_valid
+    #if f*y<0, got it wrong
+    #train_error[i]=sum(1*f*y<0)/nrow()
+    test_error[i]=sum(1*f_valid*y_valid<0)/length(valid)
+    i=i+1
+  }
+  avg_error[j]=mean(test_error)
+}
+
+library(rpart)
+while(i<=500){
+  #update weights
+  w=exp(-y*f)
+  #normalize
+  w=w/sum(w)
+  fit=rpart(y~.,x,w,method='class')
+  g=-1+2*(predict(fit,x)[,2]>.5)
+  g_valid=-1+2*(predict(fit,x_valid)[,2]>.5)
+  #calculating overall misclassification error
+  e=sum(w*(y*g<0))
+  alpha=.5*log((1-e)/e)
+  f=f+alpha*g
+  f_valid=f_valid+alpha*g_valid
+  #if f*y<0, got it wrong
+  train_error[i]=sum(1*f*y<0)/40023
+  test_error[i]=sum(1*f_valid*y_valid<0)/40023
+  i=i+1
+}
+plot(seq(1,500),test_error,type = 'l',ylim=c(0,.5),ylab='ErrorRate',
+     xlab = 'Iterations',lwd=2)
+lines(train_error,lwd=2,col='purple')
+legend(4,.5,c('Training Error','Test Error'),col=c('purple','black'),lwd=2)
